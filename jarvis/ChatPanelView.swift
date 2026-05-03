@@ -322,31 +322,43 @@ private struct MarkdownText: View {
 
     @ViewBuilder
     private func inlineView(_ s: String) -> some View {
-        if let attr = try? AttributedString(markdown: s) {
-            Text(attr)
-                .font(.system(size: 14))
-                .foregroundStyle(.primary)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
-        } else {
-            Text(s)
-                .font(.system(size: 14))
-                .foregroundStyle(.primary)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
+        let lines = s.components(separatedBy: "\n")
+        VStack(alignment: .leading, spacing: 5) {
+            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                if line.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Color.clear.frame(height: 2)
+                } else if let attr = try? AttributedString(markdown: line) {
+                    Text(attr)
+                        .font(.system(size: 14))
+                        .foregroundStyle(.primary)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text(line)
+                        .font(.system(size: 14))
+                        .foregroundStyle(.primary)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
         }
     }
 
     private func codeBlockView(lang: String?, code: String) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            if let lang, !lang.isEmpty {
-                Text(lang)
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 10)
-                    .padding(.top, 7)
-                    .padding(.bottom, 2)
+            HStack {
+                if let lang, !lang.isEmpty {
+                    Text(lang)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                CopyButton(text: code)
             }
+            .padding(.horizontal, 10)
+            .padding(.top, 7)
+            .padding(.bottom, 2)
+
             Text(code)
                 .font(.system(size: 12, design: .monospaced))
                 .foregroundStyle(.primary)
@@ -356,6 +368,26 @@ private struct MarkdownText: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct CopyButton: View {
+    let text: String
+    @State private var copied = false
+
+    var body: some View {
+        Button {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+            copied = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { copied = false }
+        } label: {
+            Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+                .animation(.easeInOut(duration: 0.15), value: copied)
+        }
+        .buttonStyle(.plain)
     }
 }
 

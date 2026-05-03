@@ -31,7 +31,7 @@ struct InputBarView: View {
         VStack(alignment: .leading, spacing: 11) {
             TextField("Ask anything", text: $inputText, axis: .vertical)
                 .textFieldStyle(.plain)
-                .font(.system(size: 15))
+                .font(.system(size: 14))
                 .foregroundStyle(.primary)
                 .lineLimit(1...8)
                 .onSubmit(onSend)
