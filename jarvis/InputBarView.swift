@@ -12,9 +12,11 @@ enum InputMode: String, CaseIterable, Identifiable, Equatable {
 
 struct InputBarView: View {
     @Binding var inputText: String
+    @Binding var attachments: [AttachmentItem]
     let onSend: () -> Void
 
     @State private var selectedMode: InputMode = .auto
+    @State private var showFilePicker = false
     @FocusState private var textFocused: Bool
     @Environment(\.colorScheme) var colorScheme
 
@@ -28,7 +30,19 @@ struct InputBarView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 11) {
+        VStack(alignment: .leading, spacing: 8) {
+            if !attachments.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(attachments) { item in
+                            AttachmentChip(item: item) {
+                                attachments.removeAll { $0.id == item.id }
+                            }
+                        }
+                    }
+                }
+            }
+
             TextField("Ask anything", text: $inputText, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(.system(size: 14))
@@ -38,7 +52,7 @@ struct InputBarView: View {
                 .focused($textFocused)
 
             HStack(spacing: 0) {
-                BarIconButton(name: "plus")
+                AttachmentButton { showFilePicker = true }
                 ModeSelectorButton(mode: $selectedMode)
 
                 Spacer()
@@ -57,6 +71,15 @@ struct InputBarView: View {
                     .buttonStyle(.plain)
                     .disabled(inputText.isEmpty)
                 }
+            }
+        }
+        .fileImporter(
+            isPresented: $showFilePicker,
+            allowedContentTypes: [.item],
+            allowsMultipleSelection: true
+        ) { result in
+            if let urls = try? result.get() {
+                attachments.append(contentsOf: urls.map { AttachmentItem(url: $0) })
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { note in
@@ -85,6 +108,48 @@ private struct BarIconButton: View {
             .background(RoundedRectangle(cornerRadius: 9).fill(Color.primary.opacity(isHovered ? 0.08 : 0)))
             .animation(.easeInOut(duration: 0.12), value: isHovered)
             .onHover { isHovered = $0 }
+    }
+}
+
+private struct AttachmentButton: View {
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "plus")
+                .font(.system(size: 16))
+                .foregroundStyle(.primary.opacity(0.72))
+                .frame(width: 32, height: 32)
+                .background(RoundedRectangle(cornerRadius: 9).fill(Color.primary.opacity(isHovered ? 0.08 : 0)))
+                .animation(.easeInOut(duration: 0.12), value: isHovered)
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+    }
+}
+
+private struct AttachmentChip: View {
+    let item: AttachmentItem
+    let onRemove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: item.isImage ? "photo" : "doc.text")
+                .font(.system(size: 10))
+            Text(item.name)
+                .font(.system(size: 12))
+                .lineLimit(1)
+            Button(action: onRemove) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .semibold))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .foregroundStyle(.secondary)
+        .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
     }
 }
 

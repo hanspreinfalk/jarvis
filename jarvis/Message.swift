@@ -1,10 +1,18 @@
 import Foundation
 
+struct MessageAttachment: Identifiable {
+    let id = UUID()
+    let name: String
+    let url: URL
+    let isImage: Bool
+}
+
 struct Message: Identifiable {
     let id = UUID()
     let isUser: Bool
-    var content: String = ""      // user messages only
-    var items: [ContentItem] = [] // AI messages: ordered text + tool blocks
+    var content: String = ""
+    var attachments: [MessageAttachment] = []
+    var items: [ContentItem] = []
     var isStreaming: Bool = false
 }
 

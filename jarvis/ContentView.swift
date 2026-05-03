@@ -3,6 +3,7 @@ import AppKit
 
 struct ContentView: View {
     @State private var inputText = ""
+    @State private var attachments: [AttachmentItem] = []
     @State private var isExpanded = false
     @State private var messages: [Message] = []
 
@@ -14,6 +15,7 @@ struct ContentView: View {
             if isExpanded {
                 ChatPanelView(
                     inputText: $inputText,
+                    attachments: $attachments,
                     messages: $messages,
                     onClose: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -26,6 +28,7 @@ struct ContentView: View {
             } else {
                 FloatingBarView(
                     inputText: $inputText,
+                    attachments: $attachments,
                     onSend: sendMessage
                 )
                 .fixedSize(horizontal: false, vertical: true)
@@ -70,16 +73,31 @@ struct ContentView: View {
     }
 
     private func sendMessage() {
-        guard !inputText.isEmpty else { return }
         let text = inputText
+        let currentAttachments = attachments
+        guard !text.isEmpty || !currentAttachments.isEmpty else { return }
         inputText = ""
+        attachments = []
 
         var userMsg = Message(isUser: true)
         userMsg.content = text
+        userMsg.attachments = currentAttachments.map {
+            MessageAttachment(name: $0.name, url: $0.url, isImage: $0.isImage)
+        }
         messages.append(userMsg)
 
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             isExpanded = true
+        }
+
+        // Build prompt: embed file contents for text files, reference paths for images
+        var fullPrompt = text
+        for item in currentAttachments {
+            if item.isImage {
+                fullPrompt = "[Image: \(item.url.path)]\n\n" + fullPrompt
+            } else if let content = try? String(contentsOf: item.url, encoding: .utf8) {
+                fullPrompt = "<file name=\"\(item.name)\">\n\(content)\n</file>\n\n" + fullPrompt
+            }
         }
 
         var assistantMessage = Message(isUser: false)
@@ -87,7 +105,7 @@ struct ContentView: View {
         messages.append(assistantMessage)
         let idx = messages.count - 1
 
-        claudeService.send(prompt: text, apiKey: APIKeys.anthropic, workingDir: defaultWorkingDir) { event in
+        claudeService.send(prompt: fullPrompt, apiKey: APIKeys.anthropic, workingDir: defaultWorkingDir) { event in
             switch event {
             case .text(let chunk):
                 // Append to last text item, or start a new one

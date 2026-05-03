@@ -4,6 +4,7 @@ private let bubbleSurface = Color.primary.opacity(0.1)
 
 struct ChatPanelView: View {
     @Binding var inputText: String
+    @Binding var attachments: [AttachmentItem]
     @Binding var messages: [Message]
     let onClose: () -> Void
     let onNewChat: () -> Void
@@ -85,7 +86,7 @@ struct ChatPanelView: View {
                 LazyVStack(alignment: .leading, spacing: 20) {
                     ForEach(messages) { message in
                         if message.isUser {
-                            UserBubble(text: message.content)
+                            UserBubble(text: message.content, attachments: message.attachments)
                         } else {
                             AIBubble(items: message.items, isStreaming: message.isStreaming)
                         }
@@ -110,7 +111,7 @@ struct ChatPanelView: View {
     // MARK: - Embedded input bar
 
     private var embeddedInputBar: some View {
-        InputBarView(inputText: $inputText, onSend: onSend)
+        InputBarView(inputText: $inputText, attachments: $attachments, onSend: onSend)
             .padding(.trailing, 10)
             .padding(.leading, 15)
             .padding(.top, 16)
@@ -129,17 +130,48 @@ struct ChatPanelView: View {
 
 private struct UserBubble: View {
     let text: String
+    var attachments: [MessageAttachment] = []
 
     var body: some View {
         HStack {
             Spacer(minLength: 60)
-            Text(text)
-                .font(.system(size: 14))
-                .foregroundStyle(.primary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 9)
-                .background(bubbleSurface)
-                .clipShape(RoundedRectangle(cornerRadius: 18))
+            VStack(alignment: .trailing, spacing: 6) {
+                if !attachments.isEmpty {
+                    HStack(spacing: 6) {
+                        ForEach(attachments) { item in
+                            if item.isImage, let nsImage = NSImage(contentsOf: item.url) {
+                                Image(nsImage: nsImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 180, height: 120)
+                                    .clipped()
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                            } else {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "doc.text")
+                                        .font(.system(size: 11))
+                                    Text(item.name)
+                                        .font(.system(size: 12))
+                                        .lineLimit(1)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .foregroundStyle(.secondary)
+                                .background(bubbleSurface, in: RoundedRectangle(cornerRadius: 10))
+                            }
+                        }
+                    }
+                }
+                if !text.isEmpty {
+                    Text(text)
+                        .font(.system(size: 14))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
+                        .background(bubbleSurface)
+                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                }
+            }
         }
     }
 }
@@ -422,6 +454,7 @@ private struct ThinkingText: View {
 #Preview {
     ChatPanelView(
         inputText: .constant("Type something here..."),
+        attachments: .constant([]),
         messages: .constant([
             Message(isUser: true, content: "Hey, can you help me build a SwiftUI app?"),
             Message(isUser: false, items: [

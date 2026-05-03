@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FloatingBarView: View {
     @Binding var inputText: String
+    @Binding var attachments: [AttachmentItem]
     let onSend: () -> Void
 
     @Environment(\.colorScheme) var colorScheme
@@ -13,7 +14,7 @@ struct FloatingBarView: View {
     }
 
     var body: some View {
-        InputBarView(inputText: $inputText, onSend: onSend)
+        InputBarView(inputText: $inputText, attachments: $attachments, onSend: onSend)
             .padding(.trailing, 10)
             .padding(.leading, 15)
             .padding(.top, 16)
