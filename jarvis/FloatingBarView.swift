@@ -17,7 +17,7 @@ struct FloatingBarView: View {
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 26))
             .overlay {
                 RoundedRectangle(cornerRadius: 26)
-                    .strokeBorder(Color(white: 0.78).opacity(0.6), lineWidth: 0.5)
+                    .strokeBorder(Color.primary.opacity(0.15), lineWidth: 0.5)
                     .allowsHitTesting(false)
             }
             .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)

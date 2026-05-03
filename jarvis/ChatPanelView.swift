@@ -1,17 +1,22 @@
 import SwiftUI
 
-/// Shared tint applied to both the embedded input bar and the user bubble
-/// so they read as the same surface.
-private let bubbleSurface = Color(white: 0.68).opacity(0.28)
+private let bubbleSurface = Color.primary.opacity(0.1)
 
-/// Expanded chat panel shown after the first message is sent.
 struct ChatPanelView: View {
     @Binding var inputText: String
     @Binding var messages: [Message]
     let onClose: () -> Void
     let onSend: () -> Void
 
+    @Environment(\.colorScheme) var colorScheme
     @State private var isPanelHovered = false
+
+    private var inputBarBackground: Color {
+        colorScheme == .dark ? Color(white: 0.2) : Color(white: 0.87)
+    }
+    private var inputBarBorder: Color {
+        colorScheme == .dark ? Color(white: 0.30) : Color(white: 0.75)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -19,16 +24,15 @@ struct ChatPanelView: View {
             messageList
             embeddedInputBar
         }
-        .colorScheme(.light)
         .frame(width: 430, height: 544)
         .onHover { isPanelHovered = $0 }
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
         .overlay {
             RoundedRectangle(cornerRadius: 20)
-                .fill(Color.white.opacity(0.15))
+                .fill(Color.white.opacity(0.07))
                 .allowsHitTesting(false)
         }
-        .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Color(white: 0.50).opacity(0.55), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Color.primary.opacity(0.18), lineWidth: 1))
         .shadow(color: .black.opacity(0.10), radius: 4, x: 0, y: 2)
         .padding(16)
     }
@@ -40,7 +44,7 @@ struct ChatPanelView: View {
             Button(action: onClose) {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 15))
-                    .foregroundStyle(Color(white: 0.55))
+                    .foregroundStyle(.secondary)
                     .symbolRenderingMode(.hierarchical)
             }
             .buttonStyle(.plain)
@@ -51,14 +55,14 @@ struct ChatPanelView: View {
                 Button(action: {}) {
                     Image(systemName: "rectangle.on.rectangle")
                         .font(.system(size: 12))
-                        .foregroundStyle(Color(white: 0.5))
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
 
                 Button(action: {}) {
                     Image(systemName: "square.and.pencil")
                         .font(.system(size: 12))
-                        .foregroundStyle(Color(white: 0.5))
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
             }
@@ -102,10 +106,10 @@ struct ChatPanelView: View {
             .padding(.leading, 15)
             .padding(.top, 16)
             .padding(.bottom, 10)
-            .background(Color(white: 0.85), in: RoundedRectangle(cornerRadius: 20))
+            .background(inputBarBackground, in: RoundedRectangle(cornerRadius: 20))
             .overlay {
                 RoundedRectangle(cornerRadius: 20)
-                    .strokeBorder(Color(white: 0.78), lineWidth: 1)
+                    .strokeBorder(inputBarBorder, lineWidth: 1)
                     .allowsHitTesting(false)
             }
             .padding(10)
@@ -122,7 +126,7 @@ private struct UserBubble: View {
             Spacer(minLength: 60)
             Text(text)
                 .font(.system(size: 14))
-                .foregroundStyle(Color.black)
+                .foregroundStyle(.primary)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 9)
                 .background(bubbleSurface)
@@ -140,14 +144,14 @@ private struct AIBubble: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(text)
                 .font(.system(size: 14))
-                .foregroundStyle(Color.black)
+                .foregroundStyle(.primary)
 
             HStack(spacing: 14) {
                 ForEach(actionIcons, id: \.self) { icon in
                     Button(action: {}) {
                         Image(systemName: icon)
                             .font(.system(size: 10))
-                            .foregroundStyle(Color(white: 0.55))
+                            .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
                 }

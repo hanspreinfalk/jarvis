@@ -12,15 +12,24 @@ struct InputBarView: View {
     @Binding var inputText: String
     @State private var selectedMode: InputMode = .auto
     @FocusState private var textFocused: Bool
+    @Environment(\.colorScheme) var colorScheme
     let onSend: () -> Void
+
+    private var sendButtonBackground: Color {
+        inputText.isEmpty ? Color.primary.opacity(0.15) : Color.primary
+    }
+    private var sendButtonForeground: Color {
+        inputText.isEmpty
+            ? Color.primary.opacity(0.35)
+            : (colorScheme == .dark ? .black : .white)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 11) {
             TextField("Ask anything", text: $inputText, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(.system(size: 15))
-                .foregroundColor(.black)
-                .foregroundStyle(Color.black)
+                .foregroundStyle(.primary)
                 .lineLimit(1...8)
                 .onSubmit(onSend)
                 .focused($textFocused)
@@ -38,9 +47,9 @@ struct InputBarView: View {
                     Button(action: onSend) {
                         Image(systemName: "arrow.up")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(sendButtonForeground)
                             .frame(width: 34, height: 34)
-                            .background(inputText.isEmpty ? Color(white: 0.62) : Color(NSColor.black))
+                            .background(sendButtonBackground)
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
