@@ -8,7 +8,7 @@ struct ContentView: View {
     @State private var showAPIKeys = false
     @State private var messages: [Message] = []
 
-    @AppStorage("anthropicAPIKey") private var anthropicKey = ""
+    @AppStorage(StorageKey.anthropicAPIKey) private var anthropicKey = ""
 
     private let claudeService = ClaudeCodeService()
     private let defaultWorkingDir = URL(fileURLWithPath: NSHomeDirectory())
@@ -78,9 +78,9 @@ struct ContentView: View {
         window.collectionBehavior = [.canJoinAllSpaces, .stationary]
         if let screen = NSScreen.main {
             let sf = screen.visibleFrame
-            let size = NSSize(width: 465, height: 127)
+            let size = NSSize(width: AppLayout.barWidth, height: AppLayout.barHeight)
             window.setFrame(
-                NSRect(x: sf.midX - size.width / 2, y: sf.minY + 80, width: size.width, height: size.height),
+                NSRect(x: sf.midX - size.width / 2, y: sf.minY + AppLayout.windowBottomOffset, width: size.width, height: size.height),
                 display: false
             )
         }
@@ -150,11 +150,11 @@ struct ContentView: View {
         let current = window.frame
         let newSize: NSSize
         if expanded {
-            newSize = NSSize(width: 462, height: 576)
+            newSize = NSSize(width: AppLayout.chatWindowWidth, height: AppLayout.chatWindowHeight)
         } else if apiKeys {
-            newSize = NSSize(width: 465, height: 316)
+            newSize = NSSize(width: AppLayout.apiKeysWindowWidth, height: AppLayout.apiKeysWindowHeight)
         } else {
-            newSize = NSSize(width: 465, height: 127)
+            newSize = NSSize(width: AppLayout.barWidth, height: AppLayout.barHeight)
         }
         window.setFrame(NSRect(
             x: current.midX - newSize.width / 2,

@@ -26,16 +26,19 @@ class ClaudeCodeService {
         let process = Process()
         self.process = process
 
-        let bunClaude = URL(fileURLWithPath: NSHomeDirectory())
-            .appendingPathComponent(".bun/bin/claude")
+        let home = NSHomeDirectory()
+        let bunClaude = URL(fileURLWithPath: home)
+            .appendingPathComponent(ClaudeSetup.claudeRelativePath)
             .resolvingSymlinksInPath()
 
         process.executableURL = bunClaude
         process.arguments = ["--output-format", "stream-json", "--verbose", "--include-partial-messages", "--print", prompt]
         var env = ProcessInfo.processInfo.environment
-        let home = NSHomeDirectory()
         env["HOME"] = home
-        env["PATH"] = "\(home)/.bun/bin:\(home)/Library/pnpm:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+        let resolvedPATH = ClaudeSetup.extraPATH
+            .map { $0.replacingOccurrences(of: "$HOME", with: home) }
+            .joined(separator: ":")
+        env["PATH"] = resolvedPATH
         if !apiKey.isEmpty { env["ANTHROPIC_API_KEY"] = apiKey }
         process.environment = env
         process.currentDirectoryURL = workingDir

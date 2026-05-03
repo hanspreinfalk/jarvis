@@ -26,7 +26,7 @@ struct ChatPanelView: View {
             messageList
             embeddedInputBar
         }
-        .frame(width: 430, height: 544)
+        .frame(width: AppLayout.chatPanelWidth, height: AppLayout.chatPanelHeight)
         .onHover { isPanelHovered = $0 }
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
         .overlay {

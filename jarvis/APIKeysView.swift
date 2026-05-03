@@ -1,9 +1,9 @@
 import SwiftUI
 
 struct APIKeysView: View {
-    @AppStorage("anthropicAPIKey") private var anthropicKey = ""
-    @AppStorage("geminiAPIKey") private var geminiKey = ""
-    @AppStorage("openAIAPIKey") private var openAIKey = ""
+    @AppStorage(StorageKey.anthropicAPIKey) private var anthropicKey = ""
+    @AppStorage(StorageKey.geminiAPIKey)    private var geminiKey = ""
+    @AppStorage(StorageKey.openAIAPIKey)    private var openAIKey = ""
     let onDismiss: () -> Void
 
     var body: some View {
