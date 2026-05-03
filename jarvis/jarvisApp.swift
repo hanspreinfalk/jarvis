@@ -3,11 +3,12 @@ import SwiftUI
 @main
 struct jarvisApp: App {
     var body: some Scene {
-        WindowGroup {
+        Window("Jarvis", id: "main") {
             ContentView()
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
+        .defaultPosition(.center)
 
         MenuBarExtra("Jarvis", systemImage: "sparkles") {
             Button("Show Jarvis") {

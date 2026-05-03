@@ -1,16 +1,11 @@
 import SwiftUI
 
-/// Compact floating input card shown when no conversation is open.
-/// Background is pure regularMaterial — it adapts naturally to whatever
-/// is behind the window (wallpaper tint, app colour, etc.).
 struct FloatingBarView: View {
     @Binding var inputText: String
-    let isOverApp: Bool
     let onSend: () -> Void
-    let onShowAPIKeys: () -> Void
 
     var body: some View {
-        InputBarView(inputText: $inputText, onSend: onSend, onShowAPIKeys: onShowAPIKeys)
+        InputBarView(inputText: $inputText, onSend: onSend)
             .padding(.trailing, 10)
             .padding(.leading, 15)
             .padding(.top, 16)
@@ -25,8 +20,4 @@ struct FloatingBarView: View {
             .frame(width: 433)
             .padding(16)
     }
-}
-
-#Preview {
-    ContentView()
 }

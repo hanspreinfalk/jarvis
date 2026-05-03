@@ -1,16 +1,15 @@
 import SwiftUI
 
 enum InputMode: String, CaseIterable, Identifiable, Equatable {
-    case auto   = "Auto"
-    case plan   = "Plan"
-    case agent  = "Agent"
+    case auto  = "Auto"
+    case plan  = "Plan"
+    case agent = "Agent"
     var id: String { rawValue }
 }
 
 struct InputBarView: View {
     @Binding var inputText: String
     let onSend: () -> Void
-    let onShowAPIKeys: () -> Void
 
     @State private var selectedMode: InputMode = .auto
     @FocusState private var textFocused: Bool
@@ -36,16 +35,14 @@ struct InputBarView: View {
                 .focused($textFocused)
 
             HStack(spacing: 0) {
-                ToolbarIconButton(name: "plus")
-                ToolbarIconButton(name: "key.horizontal", action: onShowAPIKeys)
+                BarIconButton(name: "plus")
                 ModeSelectorButton(mode: $selectedMode)
 
                 Spacer()
 
                 HStack(spacing: 6) {
-                    ToolbarIconButton(name: "record.circle")
-                    ToolbarIconButton(name: "mic")
-
+                    BarIconButton(name: "record.circle")
+                    BarIconButton(name: "mic")
                     Button(action: onSend) {
                         Image(systemName: "arrow.up")
                             .font(.system(size: 13, weight: .bold))
@@ -70,6 +67,21 @@ struct InputBarView: View {
                 .makeKeyAndOrderFront(nil)
             textFocused = true
         }
+    }
+}
+
+private struct BarIconButton: View {
+    let name: String
+    @State private var isHovered = false
+
+    var body: some View {
+        Image(systemName: name)
+            .font(.system(size: 16))
+            .foregroundStyle(.primary.opacity(0.72))
+            .frame(width: 32, height: 32)
+            .background(RoundedRectangle(cornerRadius: 9).fill(Color.primary.opacity(isHovered ? 0.08 : 0)))
+            .animation(.easeInOut(duration: 0.12), value: isHovered)
+            .onHover { isHovered = $0 }
     }
 }
 
@@ -99,30 +111,4 @@ private struct ModeSelectorButton: View {
         guard let idx = all.firstIndex(of: mode) else { return }
         mode = all[(idx + 1) % all.count]
     }
-}
-
-private struct ToolbarIconButton: View {
-    let name: String
-    var action: () -> Void = {}
-    @State private var isHovered = false
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: name)
-                .font(.system(size: 16))
-                .foregroundStyle(.primary.opacity(0.72))
-                .frame(width: 32, height: 32)
-                .background(
-                    RoundedRectangle(cornerRadius: 9)
-                        .fill(Color.primary.opacity(isHovered ? 0.08 : 0))
-                        .animation(.easeInOut(duration: 0.12), value: isHovered)
-                )
-        }
-        .buttonStyle(.plain)
-        .onHover { isHovered = $0 }
-    }
-}
-
-#Preview {
-    ContentView()
 }

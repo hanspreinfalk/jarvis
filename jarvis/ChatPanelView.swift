@@ -8,7 +8,6 @@ struct ChatPanelView: View {
     let onClose: () -> Void
     let onNewChat: () -> Void
     let onSend: () -> Void
-    let onShowAPIKeys: () -> Void
 
     @Environment(\.colorScheme) var colorScheme
     @State private var isPanelHovered = false
@@ -106,7 +105,7 @@ struct ChatPanelView: View {
     // MARK: - Embedded input bar
 
     private var embeddedInputBar: some View {
-        InputBarView(inputText: $inputText, onSend: onSend, onShowAPIKeys: onShowAPIKeys)
+        InputBarView(inputText: $inputText, onSend: onSend)
             .padding(.trailing, 10)
             .padding(.leading, 15)
             .padding(.top, 16)
@@ -380,7 +379,6 @@ private struct ThinkingText: View {
         ]),
         onClose: {},
         onNewChat: {},
-        onSend: {},
-        onShowAPIKeys: {}
+        onSend: {}
     )
 }

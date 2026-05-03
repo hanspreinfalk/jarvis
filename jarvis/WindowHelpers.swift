@@ -1,27 +1,29 @@
 import SwiftUI
 import AppKit
 
-/// Transparent NSView overlay whose mouseDownCanMoveWindow = true makes the
-/// entire card background draggable while buttons/text fields still work normally.
-struct DragHandle: NSViewRepresentable {
-    func makeNSView(context: Context) -> DragView { DragView() }
-    func updateNSView(_ nsView: DragView, context: Context) {}
-
-    class DragView: NSView {
-        override var mouseDownCanMoveWindow: Bool { true }
-    }
-}
-
-/// Runs a one-shot callback as soon as the view is placed into a window,
-/// giving access to the NSWindow for low-level configuration.
+/// Runs a one-shot callback the moment the view joins a window —
+/// synchronously, before the window is ever shown on screen.
 struct WindowAccessor: NSViewRepresentable {
     var callback: (NSWindow?) -> Void
 
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async { self.callback(view.window) }
-        return view
-    }
+    func makeNSView(context: Context) -> CallbackView { CallbackView(callback: callback) }
+    func updateNSView(_ nsView: CallbackView, context: Context) {}
 
-    func updateNSView(_ nsView: NSView, context: Context) {}
+    final class CallbackView: NSView {
+        private let callback: (NSWindow?) -> Void
+        private var didFire = false
+
+        init(callback: @escaping (NSWindow?) -> Void) {
+            self.callback = callback
+            super.init(frame: .zero)
+        }
+        required init?(coder: NSCoder) { fatalError() }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard !didFire, window != nil else { return }
+            didFire = true
+            callback(window)
+        }
+    }
 }

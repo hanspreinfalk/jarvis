@@ -4,7 +4,6 @@ struct Message: Identifiable {
     let id = UUID()
     var content: String
     let isUser: Bool
-    var thinking: String?
     var toolEvents: [ToolEvent] = []
     var isStreaming: Bool = false
 }

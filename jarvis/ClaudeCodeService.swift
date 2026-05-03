@@ -32,7 +32,7 @@ class ClaudeCodeService {
             .resolvingSymlinksInPath()
 
         process.executableURL = bunClaude
-        process.arguments = ["--output-format", "stream-json", "--verbose", "--include-partial-messages", "--print", prompt]
+        process.arguments = ["--dangerously-skip-permissions", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--print", prompt]
         var env = ProcessInfo.processInfo.environment
         env["HOME"] = home
         let resolvedPATH = ClaudeSetup.extraPATH

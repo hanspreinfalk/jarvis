@@ -28,13 +28,13 @@ enum ClaudeSetup {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AppStorage keys  (must stay in sync across the whole app)
+// API Keys
 // ─────────────────────────────────────────────────────────────────────────────
 
-enum StorageKey {
-    static let anthropicAPIKey = "anthropicAPIKey"
-    static let geminiAPIKey    = "geminiAPIKey"
-    static let openAIAPIKey    = "openAIAPIKey"
+enum APIKeys {
+    /// Your Anthropic API key — get one at https://console.anthropic.com
+    /// Leave empty ("") to use Claude Code's own login (`claude /login`).
+    static let anthropic = ""
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -49,10 +49,6 @@ enum AppLayout {
     /// Expanded chat panel window
     static let chatWindowWidth:  CGFloat = 462
     static let chatWindowHeight: CGFloat = 576
-
-    /// API-keys panel window
-    static let apiKeysWindowWidth:  CGFloat = 465
-    static let apiKeysWindowHeight: CGFloat = 316
 
     /// Distance from the bottom of the screen when the window first appears
     static let windowBottomOffset: CGFloat = 80

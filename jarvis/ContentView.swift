@@ -3,12 +3,8 @@ import AppKit
 
 struct ContentView: View {
     @State private var inputText = ""
-    @State private var isOverApp = false
     @State private var isExpanded = false
-    @State private var showAPIKeys = false
     @State private var messages: [Message] = []
-
-    @AppStorage(StorageKey.anthropicAPIKey) private var anthropicKey = ""
 
     private let claudeService = ClaudeCodeService()
     private let defaultWorkingDir = URL(fileURLWithPath: NSHomeDirectory())
@@ -25,42 +21,19 @@ struct ContentView: View {
                         }
                     },
                     onNewChat: newChat,
-                    onSend: sendMessage,
-                    onShowAPIKeys: toggleAPIKeys
+                    onSend: sendMessage
                 )
             } else {
-                VStack(spacing: 0) {
-                    if showAPIKeys {
-                        APIKeysView(onDismiss: toggleAPIKeys)
-                            .padding(.horizontal, 16)
-                            .padding(.top, 16)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
-                    FloatingBarView(
-                        inputText: $inputText,
-                        isOverApp: isOverApp,
-                        onSend: sendMessage,
-                        onShowAPIKeys: toggleAPIKeys
-                    )
-                    .fixedSize(horizontal: false, vertical: true)
-                }
+                FloatingBarView(
+                    inputText: $inputText,
+                    onSend: sendMessage
+                )
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
         .background(WindowAccessor(callback: configureWindow))
-        .onReceive(NSWorkspace.shared.notificationCenter.publisher(
-            for: NSWorkspace.didActivateApplicationNotification
-        )) { note in
-            let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-            let bundle = app?.bundleIdentifier ?? ""
-            isOverApp = bundle != "com.apple.finder" && bundle != Bundle.main.bundleIdentifier
-        }
         .onChange(of: isExpanded) { _, expanded in
-            if expanded { showAPIKeys = false }
-            resizeWindow(expanded: expanded, apiKeys: false)
-        }
-        .onChange(of: showAPIKeys) { _, show in
-            guard !isExpanded else { return }
-            resizeWindow(expanded: false, apiKeys: show)
+            resizeWindow(expanded: expanded)
         }
     }
 
@@ -68,10 +41,13 @@ struct ContentView: View {
 
     private func configureWindow(_ window: NSWindow?) {
         guard let window else { return }
-        window.alphaValue = 0
-        window.styleMask = [.borderless, .fullSizeContentView]
         window.isOpaque = false
         window.backgroundColor = .clear
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.standardWindowButton(.closeButton)?.isHidden = true
+        window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+        window.standardWindowButton(.zoomButton)?.isHidden = true
         window.level = NSWindow.Level(rawValue: Int(NSWindow.Level.floating.rawValue) + 1)
         window.isMovableByWindowBackground = true
         window.hasShadow = false
@@ -84,7 +60,6 @@ struct ContentView: View {
                 display: false
             )
         }
-        DispatchQueue.main.async { window.alphaValue = 1 }
     }
 
     // MARK: - Actions
@@ -92,12 +67,6 @@ struct ContentView: View {
     private func newChat() {
         claudeService.cancel()
         messages = []
-    }
-
-    private func toggleAPIKeys() {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-            showAPIKeys.toggle()
-        }
     }
 
     private func sendMessage() {
@@ -115,15 +84,13 @@ struct ContentView: View {
         messages.append(assistantMessage)
         let idx = messages.count - 1
 
-        let key = anthropicKey.isEmpty ? "" : anthropicKey
-
-        claudeService.send(prompt: text, apiKey: key, workingDir: defaultWorkingDir) { event in
+        claudeService.send(prompt: text, apiKey: APIKeys.anthropic, workingDir: defaultWorkingDir) { event in
             switch event {
             case .text(let chunk):
                 messages[idx].content += chunk
 
-            case .thinking(let chunk):
-                messages[idx].thinking = (messages[idx].thinking ?? "") + chunk
+            case .thinking:
+                break
 
             case .toolUse(let name, let input):
                 messages[idx].toolEvents.append(ToolEvent(toolName: name, input: input))
@@ -145,17 +112,12 @@ struct ContentView: View {
         }
     }
 
-    private func resizeWindow(expanded: Bool, apiKeys: Bool) {
+    private func resizeWindow(expanded: Bool) {
         guard let window = NSApp.windows.first(where: { $0.styleMask.contains(.fullSizeContentView) }) else { return }
         let current = window.frame
-        let newSize: NSSize
-        if expanded {
-            newSize = NSSize(width: AppLayout.chatWindowWidth, height: AppLayout.chatWindowHeight)
-        } else if apiKeys {
-            newSize = NSSize(width: AppLayout.apiKeysWindowWidth, height: AppLayout.apiKeysWindowHeight)
-        } else {
-            newSize = NSSize(width: AppLayout.barWidth, height: AppLayout.barHeight)
-        }
+        let newSize = expanded
+            ? NSSize(width: AppLayout.chatWindowWidth, height: AppLayout.chatWindowHeight)
+            : NSSize(width: AppLayout.barWidth, height: AppLayout.barHeight)
         window.setFrame(NSRect(
             x: current.midX - newSize.width / 2,
             y: current.minY,
