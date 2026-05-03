@@ -45,21 +45,23 @@ struct ContentView: View {
 
     private func configureWindow(_ window: NSWindow?) {
         guard let window else { return }
+        window.alphaValue = 0
         window.styleMask = [.borderless, .fullSizeContentView]
         window.isOpaque = false
         window.backgroundColor = .clear
         window.level = NSWindow.Level(rawValue: Int(NSWindow.Level.floating.rawValue) + 1)
         window.isMovableByWindowBackground = true
         window.hasShadow = false
-        window.appearance = NSAppearance(named: .aqua)
         window.collectionBehavior = [.canJoinAllSpaces, .stationary]
-        window.setContentSize(NSSize(width: 465, height: 127))
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            guard let screen = NSScreen.main else { return }
+        if let screen = NSScreen.main {
             let sf = screen.visibleFrame
-            let wf = window.frame
-            window.setFrameOrigin(NSPoint(x: sf.midX - wf.width / 2, y: sf.minY + 80))
+            let size = NSSize(width: 465, height: 127)
+            window.setFrame(
+                NSRect(x: sf.midX - size.width / 2, y: sf.minY + 80, width: size.width, height: size.height),
+                display: false
+            )
         }
+        DispatchQueue.main.async { window.alphaValue = 1 }
     }
 
     // MARK: - Actions
@@ -81,7 +83,7 @@ struct ContentView: View {
         guard let window = NSApp.windows.first(where: { $0.styleMask.contains(.fullSizeContentView) }) else { return }
         let current = window.frame
         let newSize = expanded
-            ? NSSize(width: 462, height: 672)   // ChatPanel 430×640 + 16pt padding each side
+            ? NSSize(width: 462, height: 576)   // ChatPanel 430×544 + 16pt padding each side
             : NSSize(width: 465, height: 127)   // FloatingBar 433 + 32pt padding
         window.setFrame(NSRect(
             x: current.midX - newSize.width / 2,

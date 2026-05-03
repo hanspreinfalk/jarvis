@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// Compact floating input card shown when no conversation is open.
-/// Uses regularMaterial over the wallpaper; fades to near-solid white when
-/// another app's window sits beneath it.
+/// Background is pure regularMaterial — it adapts naturally to whatever
+/// is behind the window (wallpaper tint, app colour, etc.).
 struct FloatingBarView: View {
     @Binding var inputText: String
     let isOverApp: Bool
@@ -16,18 +16,11 @@ struct FloatingBarView: View {
             .padding(.bottom, 10)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 26))
             .overlay {
-                // Near-solid white tint when a real app window is visible beneath
                 RoundedRectangle(cornerRadius: 26)
-                    .fill(Color.white.opacity(isOverApp ? 0.55 : 0))
-                    .allowsHitTesting(false)
-                    .animation(.easeInOut(duration: 0.25), value: isOverApp)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 26)
-                    .strokeBorder(Color(white: 0.78), lineWidth: 1)
+                    .strokeBorder(Color(white: 0.78).opacity(0.6), lineWidth: 0.5)
                     .allowsHitTesting(false)
             }
-            .shadow(color: .black.opacity(0.13), radius: 3, x: 0, y: 1)
+            .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
             .frame(width: 433)
             .padding(16)
     }
