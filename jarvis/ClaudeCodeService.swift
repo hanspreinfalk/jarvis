@@ -25,7 +25,7 @@ class ClaudeCodeService {
 
         let process = Process()
         self.process = process
-        
+
         let bunClaude = URL(fileURLWithPath: NSHomeDirectory())
             .appendingPathComponent(".bun/bin/claude")
             .resolvingSymlinksInPath()
@@ -56,7 +56,7 @@ class ClaudeCodeService {
                 for try await line in pipe.fileHandleForReading.bytes.lines {
                     guard !Task.isCancelled else { break }
                     guard !line.isEmpty else { continue }
-                    if let event = parseEvent(line) {
+                    for event in parseEvents(line) {
                         await MainActor.run { onEvent(event) }
                     }
                 }
@@ -74,11 +74,11 @@ class ClaudeCodeService {
         process = nil
     }
 
-    private func parseEvent(_ line: String) -> ClaudeEvent? {
+    private func parseEvents(_ line: String) -> [ClaudeEvent] {
         guard let data = line.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let type = json["type"] as? String
-        else { return nil }
+        else { return [] }
 
         switch type {
         case "stream_event":
@@ -86,41 +86,39 @@ class ClaudeCodeService {
                   let eventType = event["type"] as? String,
                   eventType == "content_block_delta",
                   let delta = event["delta"] as? [String: Any]
-            else { return nil }
+            else { return [] }
             let deltaType = delta["type"] as? String
             if deltaType == "text_delta", let text = delta["text"] as? String {
-                return .text(text)
+                return [.text(text)]
             }
             if deltaType == "thinking_delta", let thinking = delta["thinking"] as? String {
-                return .thinking(thinking)
+                return [.thinking(thinking)]
             }
-            return nil
+            return []
 
         case "assistant":
-            // Only use assistant event for tool_use blocks (not text — stream_event covers that)
+            // Use assistant event for tool_use blocks (text comes via stream_event deltas)
             guard let message = json["message"] as? [String: Any],
-                  let content = message["content"] as? [[String: Any]] else { return nil }
-            for block in content {
-                if block["type"] as? String == "tool_use" {
-                    let name = block["name"] as? String ?? "Unknown"
-                    let input = (block["input"] as? [String: Any])
-                        .flatMap { try? JSONSerialization.data(withJSONObject: $0, options: .prettyPrinted) }
-                        .flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
-                    return .toolUse(name: name, input: input)
-                }
+                  let content = message["content"] as? [[String: Any]] else { return [] }
+            return content.compactMap { block -> ClaudeEvent? in
+                guard block["type"] as? String == "tool_use" else { return nil }
+                let name = block["name"] as? String ?? "Unknown"
+                let input = (block["input"] as? [String: Any])
+                    .flatMap { try? JSONSerialization.data(withJSONObject: $0, options: .prettyPrinted) }
+                    .flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+                return .toolUse(name: name, input: input)
             }
-            return nil
 
         case "tool_result":
             let isError = json["is_error"] as? Bool ?? false
             let output = (json["content"] as? [[String: Any]])?.first?["text"] as? String ?? ""
-            return .toolResult(output: output, isError: isError)
+            return [.toolResult(output: output, isError: isError)]
 
         case "result":
-            return .done
+            return [.done]
 
         default:
-            return nil
+            return []
         }
     }
 }

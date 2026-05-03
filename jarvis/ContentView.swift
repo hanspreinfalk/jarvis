@@ -24,6 +24,7 @@ struct ContentView: View {
                             isExpanded = false
                         }
                     },
+                    onNewChat: newChat,
                     onSend: sendMessage,
                     onShowAPIKeys: toggleAPIKeys
                 )
@@ -87,6 +88,11 @@ struct ContentView: View {
     }
 
     // MARK: - Actions
+
+    private func newChat() {
+        claudeService.cancel()
+        messages = []
+    }
 
     private func toggleAPIKeys() {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {

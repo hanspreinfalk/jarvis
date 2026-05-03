@@ -6,6 +6,7 @@ struct ChatPanelView: View {
     @Binding var inputText: String
     @Binding var messages: [Message]
     let onClose: () -> Void
+    let onNewChat: () -> Void
     let onSend: () -> Void
     let onShowAPIKeys: () -> Void
 
@@ -60,7 +61,7 @@ struct ChatPanelView: View {
                 }
                 .buttonStyle(.plain)
 
-                Button(action: {}) {
+                Button(action: onNewChat) {
                     Image(systemName: "square.and.pencil")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
@@ -85,7 +86,7 @@ struct ChatPanelView: View {
                         if message.isUser {
                             UserBubble(text: message.content)
                         } else {
-                            AIBubble(text: message.content, isStreaming: message.isStreaming)
+                            AIBubble(text: message.content, toolEvents: message.toolEvents, isStreaming: message.isStreaming)
                         }
                     }
                 }
@@ -141,21 +142,27 @@ private struct UserBubble: View {
 
 private struct AIBubble: View {
     let text: String
+    let toolEvents: [ToolEvent]
     let isStreaming: Bool
 
     private let actionIcons = ["doc.on.doc", "speaker.wave.2", "hand.thumbsup", "hand.thumbsdown", "arrow.clockwise"]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if text.isEmpty && isStreaming {
-                Text("Thinking…")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.secondary)
-                    .italic()
-            } else {
-                Text(text)
-                    .font(.system(size: 14))
-                    .foregroundStyle(.primary)
+            if text.isEmpty && toolEvents.isEmpty && isStreaming {
+                ThinkingText()
+            }
+
+            if !toolEvents.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(toolEvents) { event in
+                        ToolEventRow(event: event)
+                    }
+                }
+            }
+
+            if !text.isEmpty {
+                MarkdownText(source: text)
             }
 
             if !isStreaming {
@@ -178,6 +185,189 @@ private struct AIBubble: View {
     }
 }
 
+private struct ToolEventRow: View {
+    let event: ToolEvent
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button { withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) { isExpanded.toggle() } } label: {
+                HStack(spacing: 7) {
+                    statusDot
+                    Image(systemName: toolIcon)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                    Text(event.toolName)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 6) {
+                    if !event.input.isEmpty {
+                        Text(event.input)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(8)
+                    }
+                    if let output = event.output, !output.isEmpty {
+                        Divider().opacity(0.5)
+                        Text(output)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(event.isError ? .red : .secondary)
+                            .lineLimit(8)
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.bottom, 8)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    @ViewBuilder
+    private var statusDot: some View {
+        if event.isComplete {
+            Circle()
+                .fill(event.isError ? Color.red.opacity(0.8) : Color.green.opacity(0.7))
+                .frame(width: 6, height: 6)
+        } else {
+            Circle()
+                .fill(Color.orange.opacity(0.8))
+                .frame(width: 6, height: 6)
+                .opacity(0.9)
+        }
+    }
+
+    private var toolIcon: String {
+        switch event.toolName.lowercased() {
+        case "bash":               return "terminal"
+        case "read":               return "doc.text"
+        case "write":              return "pencil.and.outline"
+        case "edit":               return "pencil"
+        case "grep":               return "magnifyingglass"
+        case "glob":               return "folder"
+        case "websearch":          return "magnifyingglass.circle"
+        case "webfetch":           return "globe"
+        case "task":               return "checklist"
+        case "todowrite":          return "list.bullet"
+        default:                   return "wrench.and.screwdriver"
+        }
+    }
+}
+
+// MARK: - Markdown renderer
+
+private struct MarkdownText: View {
+    let source: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(segments(source).enumerated()), id: \.offset) { _, seg in
+                switch seg {
+                case .text(let s):
+                    inlineView(s)
+                case .code(let lang, let code):
+                    codeBlockView(lang: lang, code: code)
+                }
+            }
+        }
+    }
+
+    // Split on fenced code blocks (``` ... ```)
+    private enum Segment { case text(String); case code(String?, String) }
+
+    private func segments(_ s: String) -> [Segment] {
+        var result: [Segment] = []
+        let parts = s.components(separatedBy: "```")
+        for (i, part) in parts.enumerated() {
+            if i % 2 == 0 {
+                if !part.isEmpty { result.append(.text(part)) }
+            } else {
+                let lines = part.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)
+                let lang = lines.first?.trimmingCharacters(in: .whitespaces)
+                let code = lines.dropFirst().joined(separator: "\n")
+                result.append(.code(lang?.isEmpty == true ? nil : lang, code.isEmpty ? part : code))
+            }
+        }
+        return result
+    }
+
+    @ViewBuilder
+    private func inlineView(_ s: String) -> some View {
+        if let attr = try? AttributedString(markdown: s) {
+            Text(attr)
+                .font(.system(size: 14))
+                .foregroundStyle(.primary)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            Text(s)
+                .font(.system(size: 14))
+                .foregroundStyle(.primary)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func codeBlockView(lang: String?, code: String) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let lang, !lang.isEmpty {
+                Text(lang)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.top, 7)
+                    .padding(.bottom, 2)
+            }
+            Text(code)
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundStyle(.primary)
+                .textSelection(.enabled)
+                .padding(10)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct ThinkingText: View {
+    var body: some View {
+        TimelineView(.animation) { ctx in
+            let t = ctx.date.timeIntervalSinceReferenceDate
+            let phase = CGFloat((t.truncatingRemainder(dividingBy: 1.5)) / 1.5) * 1.6 - 0.3
+            Text("Thinking…")
+                .font(.system(size: 14))
+                .italic()
+                .foregroundStyle(shimmer(phase: phase))
+        }
+    }
+
+    private func shimmer(phase: CGFloat) -> LinearGradient {
+        func cl(_ v: CGFloat) -> CGFloat { min(1, max(0, v)) }
+        return LinearGradient(
+            stops: [
+                .init(color: .secondary.opacity(0.3),  location: 0),
+                .init(color: .secondary.opacity(0.3),  location: cl(phase - 0.25)),
+                .init(color: .primary.opacity(0.95),   location: cl(phase)),
+                .init(color: .secondary.opacity(0.3),  location: cl(phase + 0.25)),
+                .init(color: .secondary.opacity(0.3),  location: 1),
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+}
 
 #Preview {
     ChatPanelView(
@@ -189,6 +379,7 @@ private struct AIBubble: View {
             Message(content: "Nice — a borderless floating window with regularMaterial, always on top. I can walk you through the whole thing.", isUser: false),
         ]),
         onClose: {},
+        onNewChat: {},
         onSend: {},
         onShowAPIKeys: {}
     )
