@@ -85,7 +85,7 @@ struct ChatPanelView: View {
                         if message.isUser {
                             UserBubble(text: message.content)
                         } else {
-                            AIBubble(text: message.content)
+                            AIBubble(text: message.content, isStreaming: message.isStreaming)
                         }
                     }
                 }
@@ -95,6 +95,9 @@ struct ChatPanelView: View {
             }
             .onChange(of: messages.count) {
                 withAnimation { proxy.scrollTo("scrollBottom", anchor: .bottom) }
+            }
+            .onChange(of: messages.last?.content) {
+                proxy.scrollTo("scrollBottom", anchor: .bottom)
             }
         }
     }
@@ -138,30 +141,43 @@ private struct UserBubble: View {
 
 private struct AIBubble: View {
     let text: String
+    let isStreaming: Bool
 
     private let actionIcons = ["doc.on.doc", "speaker.wave.2", "hand.thumbsup", "hand.thumbsdown", "arrow.clockwise"]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(text)
-                .font(.system(size: 14))
-                .foregroundStyle(.primary)
+            if text.isEmpty && isStreaming {
+                Text("Thinking…")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.secondary)
+                    .italic()
+            } else {
+                Text(text)
+                    .font(.system(size: 14))
+                    .foregroundStyle(.primary)
+            }
 
-            HStack(spacing: 14) {
-                ForEach(actionIcons, id: \.self) { icon in
-                    Button(action: {}) {
-                        Image(systemName: icon)
-                            .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
+            if !isStreaming {
+                HStack(spacing: 14) {
+                    ForEach(actionIcons, id: \.self) { icon in
+                        Button(action: {}) {
+                            Image(systemName: icon)
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
+                .transition(.opacity)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.trailing, 40)
+        .animation(.easeIn(duration: 0.2), value: isStreaming)
     }
 }
+
 
 #Preview {
     ChatPanelView(

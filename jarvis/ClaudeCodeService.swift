@@ -31,7 +31,7 @@ class ClaudeCodeService {
             .resolvingSymlinksInPath()
 
         process.executableURL = bunClaude
-        process.arguments = ["--output-format", "stream-json", "--verbose", "--print", prompt]
+        process.arguments = ["--output-format", "stream-json", "--verbose", "--include-partial-messages", "--print", prompt]
         var env = ProcessInfo.processInfo.environment
         let home = NSHomeDirectory()
         env["HOME"] = home
@@ -81,26 +81,35 @@ class ClaudeCodeService {
         else { return nil }
 
         switch type {
-        case "assistant":
-            guard let message = json["message"] as? [String: Any],
-                  let content = message["content"] as? [[String: Any]] else { return nil }
-            for block in content {
-                let blockType = block["type"] as? String
-                if blockType == "text", let text = block["text"] as? String {
-                    return .text(text)
-                }
-                if blockType == "thinking", let thinking = block["thinking"] as? String {
-                    return .thinking(thinking)
-                }
+        case "stream_event":
+            guard let event = json["event"] as? [String: Any],
+                  let eventType = event["type"] as? String,
+                  eventType == "content_block_delta",
+                  let delta = event["delta"] as? [String: Any]
+            else { return nil }
+            let deltaType = delta["type"] as? String
+            if deltaType == "text_delta", let text = delta["text"] as? String {
+                return .text(text)
+            }
+            if deltaType == "thinking_delta", let thinking = delta["thinking"] as? String {
+                return .thinking(thinking)
             }
             return nil
 
-        case "tool_use":
-            let name = json["name"] as? String ?? "Unknown"
-            let input = (json["input"] as? [String: Any])
-                .flatMap { try? JSONSerialization.data(withJSONObject: $0, options: .prettyPrinted) }
-                .flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
-            return .toolUse(name: name, input: input)
+        case "assistant":
+            // Only use assistant event for tool_use blocks (not text — stream_event covers that)
+            guard let message = json["message"] as? [String: Any],
+                  let content = message["content"] as? [[String: Any]] else { return nil }
+            for block in content {
+                if block["type"] as? String == "tool_use" {
+                    let name = block["name"] as? String ?? "Unknown"
+                    let input = (block["input"] as? [String: Any])
+                        .flatMap { try? JSONSerialization.data(withJSONObject: $0, options: .prettyPrinted) }
+                        .flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+                    return .toolUse(name: name, input: input)
+                }
+            }
+            return nil
 
         case "tool_result":
             let isError = json["is_error"] as? Bool ?? false
