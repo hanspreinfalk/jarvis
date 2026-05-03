@@ -4,13 +4,21 @@ struct FloatingBarView: View {
     @Binding var inputText: String
     let onSend: () -> Void
 
+    @Environment(\.colorScheme) var colorScheme
+
+    private var barBackground: AnyShapeStyle {
+        colorScheme == .light
+            ? AnyShapeStyle(Color(white: 0.97))
+            : AnyShapeStyle(Material.regular)
+    }
+
     var body: some View {
         InputBarView(inputText: $inputText, onSend: onSend)
             .padding(.trailing, 10)
             .padding(.leading, 15)
             .padding(.top, 16)
             .padding(.bottom, 10)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 26))
+            .background(barBackground, in: RoundedRectangle(cornerRadius: 26))
             .overlay {
                 RoundedRectangle(cornerRadius: 26)
                     .strokeBorder(Color.primary.opacity(0.15), lineWidth: 0.5)

@@ -13,7 +13,7 @@ struct ChatPanelView: View {
     @State private var isPanelHovered = false
 
     private var inputBarBackground: Color {
-        colorScheme == .dark ? Color(white: 0.2) : Color(white: 0.87)
+        colorScheme == .dark ? Color(white: 0.2) : Color(white: 0.91)
     }
     private var inputBarBorder: Color {
         colorScheme == .dark ? Color(white: 0.30) : Color(white: 0.75)
@@ -27,7 +27,7 @@ struct ChatPanelView: View {
         }
         .frame(width: AppLayout.chatPanelWidth, height: AppLayout.chatPanelHeight)
         .onHover { isPanelHovered = $0 }
-        .background(.ultraThickMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .background(colorScheme == .light ? AnyShapeStyle(Color(white: 0.97)) : AnyShapeStyle(Material.ultraThick), in: RoundedRectangle(cornerRadius: 20))
 //        .background(colorScheme == .dark ? Color.black.opacity(0.65) : Color.clear,
 //                    in: RoundedRectangle(cornerRadius: 20))
         .overlay {
