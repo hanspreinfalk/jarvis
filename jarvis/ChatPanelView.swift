@@ -85,7 +85,7 @@ struct ChatPanelView: View {
                         if message.isUser {
                             UserBubble(text: message.content)
                         } else {
-                            AIBubble(text: message.content, toolEvents: message.toolEvents, isStreaming: message.isStreaming)
+                            AIBubble(items: message.items, isStreaming: message.isStreaming)
                         }
                     }
                 }
@@ -97,6 +97,9 @@ struct ChatPanelView: View {
                 withAnimation { proxy.scrollTo("scrollBottom", anchor: .bottom) }
             }
             .onChange(of: messages.last?.content) {
+                proxy.scrollTo("scrollBottom", anchor: .bottom)
+            }
+            .onChange(of: messages.last?.items.count) {
                 proxy.scrollTo("scrollBottom", anchor: .bottom)
             }
         }
@@ -140,31 +143,30 @@ private struct UserBubble: View {
 }
 
 private struct AIBubble: View {
-    let text: String
-    let toolEvents: [ToolEvent]
+    let items: [ContentItem]
     let isStreaming: Bool
 
     private let actionIcons = ["doc.on.doc", "speaker.wave.2", "hand.thumbsup", "hand.thumbsdown", "arrow.clockwise"]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if text.isEmpty && toolEvents.isEmpty && isStreaming {
+            if items.isEmpty && isStreaming {
                 ThinkingText()
             }
 
-            if !toolEvents.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(toolEvents) { event in
-                        ToolEventRow(event: event)
+            // Render items in chronological order: text and tools interleaved
+            ForEach(items) { item in
+                switch item {
+                case .text(_, let content):
+                    if !content.isEmpty {
+                        MarkdownText(source: content)
                     }
+                case .tool(let event):
+                    ToolEventRow(event: event)
                 }
             }
 
-            if !text.isEmpty {
-                MarkdownText(source: text)
-            }
-
-            if !isStreaming {
+            if !isStreaming && !items.isEmpty {
                 HStack(spacing: 14) {
                     ForEach(actionIcons, id: \.self) { icon in
                         Button(action: {}) {
@@ -372,10 +374,17 @@ private struct ThinkingText: View {
     ChatPanelView(
         inputText: .constant("Type something here..."),
         messages: .constant([
-            Message(content: "Hey, can you help me build a SwiftUI app?", isUser: true),
-            Message(content: "Absolutely! SwiftUI is great for macOS and iOS. What kind of app do you have in mind?", isUser: false),
-            Message(content: "A floating assistant like this one, actually.", isUser: true),
-            Message(content: "Nice — a borderless floating window with regularMaterial, always on top. I can walk you through the whole thing.", isUser: false),
+            Message(isUser: true, content: "Hey, can you help me build a SwiftUI app?"),
+            Message(isUser: false, items: [
+                .text(id: UUID(), content: "Sure! Let me check the existing files first."),
+                .tool(ToolEvent(toolName: "Read", input: "ContentView.swift", output: "import SwiftUI\n...", isComplete: true)),
+                .text(id: UUID(), content: "Got it — a floating assistant window. I can walk you through the whole thing."),
+            ]),
+            Message(isUser: true, content: "A floating assistant like this one, actually."),
+            Message(isUser: false, items: [
+                .tool(ToolEvent(toolName: "Bash", input: "ls -la", output: "total 42\n...", isComplete: true)),
+                .text(id: UUID(), content: "Nice — a borderless floating window with regularMaterial, always on top."),
+            ]),
         ]),
         onClose: {},
         onNewChat: {},

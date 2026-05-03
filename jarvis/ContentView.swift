@@ -74,39 +74,52 @@ struct ContentView: View {
         let text = inputText
         inputText = ""
 
-        messages.append(Message(content: text, isUser: true))
+        var userMsg = Message(isUser: true)
+        userMsg.content = text
+        messages.append(userMsg)
 
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             isExpanded = true
         }
 
-        let assistantMessage = Message(content: "", isUser: false, isStreaming: true)
+        var assistantMessage = Message(isUser: false)
+        assistantMessage.isStreaming = true
         messages.append(assistantMessage)
         let idx = messages.count - 1
 
         claudeService.send(prompt: text, apiKey: APIKeys.anthropic, workingDir: defaultWorkingDir) { event in
             switch event {
             case .text(let chunk):
-                messages[idx].content += chunk
+                // Append to last text item, or start a new one
+                if case .text(let id, let existing) = messages[idx].items.last {
+                    messages[idx].items[messages[idx].items.count - 1] = .text(id: id, content: existing + chunk)
+                } else {
+                    messages[idx].items.append(.text(id: UUID(), content: chunk))
+                }
 
             case .thinking:
                 break
 
             case .toolUse(let name, let input):
-                messages[idx].toolEvents.append(ToolEvent(toolName: name, input: input))
+                messages[idx].items.append(.tool(ToolEvent(toolName: name, input: input)))
 
             case .toolResult(let output, let isError):
-                guard !messages[idx].toolEvents.isEmpty else { return }
-                let last = messages[idx].toolEvents.count - 1
-                messages[idx].toolEvents[last].output = output
-                messages[idx].toolEvents[last].isComplete = true
-                messages[idx].toolEvents[last].isError = isError
+                // Find the last tool item and mark it complete
+                for i in stride(from: messages[idx].items.count - 1, through: 0, by: -1) {
+                    if case .tool(var event) = messages[idx].items[i] {
+                        event.output = output
+                        event.isComplete = true
+                        event.isError = isError
+                        messages[idx].items[i] = .tool(event)
+                        break
+                    }
+                }
 
             case .done:
                 messages[idx].isStreaming = false
 
             case .error(let err):
-                messages[idx].content = "Error: \(err)"
+                messages[idx].items.append(.text(id: UUID(), content: "Error: \(err)"))
                 messages[idx].isStreaming = false
             }
         }

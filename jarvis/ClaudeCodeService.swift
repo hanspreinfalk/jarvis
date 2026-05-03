@@ -1,10 +1,3 @@
-//
-//  ClaudeCodeService.swift
-//  jarvis
-//
-//  Created by Hans Preinfalk on 5/2/26.
-//
-
 import Foundation
 
 enum ClaudeEvent {
@@ -19,9 +12,10 @@ enum ClaudeEvent {
 class ClaudeCodeService {
     private var process: Process?
     private var streamTask: Task<Void, Never>?
+    private var sessionId: String?
 
     func send(prompt: String, apiKey: String, workingDir: URL, onEvent: @escaping (ClaudeEvent) -> Void) {
-        cancel()
+        stopCurrentTask()
 
         let process = Process()
         self.process = process
@@ -32,7 +26,16 @@ class ClaudeCodeService {
             .resolvingSymlinksInPath()
 
         process.executableURL = bunClaude
-        process.arguments = ["--dangerously-skip-permissions", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--print", prompt]
+
+        // Use --resume to continue the conversation if we have a session ID
+        var args = ["--dangerously-skip-permissions", "--output-format", "stream-json",
+                    "--verbose", "--include-partial-messages"]
+        if let sid = sessionId {
+            args += ["--resume", sid]
+        }
+        args += ["--print", prompt]
+        process.arguments = args
+
         var env = ProcessInfo.processInfo.environment
         env["HOME"] = home
         let resolvedPATH = ClaudeSetup.extraPATH
@@ -70,7 +73,14 @@ class ClaudeCodeService {
         }
     }
 
+    // Called when the user starts a new chat — resets session context
     func cancel() {
+        stopCurrentTask()
+        sessionId = nil
+    }
+
+    // Stops the running process/task without clearing the session ID
+    private func stopCurrentTask() {
         streamTask?.cancel()
         streamTask = nil
         process?.terminate()
@@ -100,7 +110,6 @@ class ClaudeCodeService {
             return []
 
         case "assistant":
-            // Use assistant event for tool_use blocks (text comes via stream_event deltas)
             guard let message = json["message"] as? [String: Any],
                   let content = message["content"] as? [[String: Any]] else { return [] }
             return content.compactMap { block -> ClaudeEvent? in
@@ -118,6 +127,10 @@ class ClaudeCodeService {
             return [.toolResult(output: output, isError: isError)]
 
         case "result":
+            // Capture the session ID so the next message resumes this conversation
+            if let sid = json["session_id"] as? String {
+                sessionId = sid
+            }
             return [.done]
 
         default:
