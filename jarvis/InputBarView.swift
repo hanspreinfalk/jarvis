@@ -7,13 +7,14 @@ enum InputMode: String, CaseIterable, Identifiable, Equatable {
     var id: String { rawValue }
 }
 
-/// The text field + toolbar row shared between the floating bar and the chat panel.
 struct InputBarView: View {
     @Binding var inputText: String
+    let onSend: () -> Void
+    let onShowAPIKeys: () -> Void
+
     @State private var selectedMode: InputMode = .auto
     @FocusState private var textFocused: Bool
     @Environment(\.colorScheme) var colorScheme
-    let onSend: () -> Void
 
     private var sendButtonBackground: Color {
         inputText.isEmpty ? Color.primary.opacity(0.15) : Color.primary
@@ -36,6 +37,7 @@ struct InputBarView: View {
 
             HStack(spacing: 0) {
                 ToolbarIconButton(name: "plus")
+                ToolbarIconButton(name: "key.horizontal", action: onShowAPIKeys)
                 ModeSelectorButton(mode: $selectedMode)
 
                 Spacer()
@@ -57,18 +59,20 @@ struct InputBarView: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { note in
+            guard (note.object as? NSWindow)?.styleMask.contains(.fullSizeContentView) == true else { return }
+            textFocused = true
+        }
         .onChange(of: selectedMode) { _, _ in
             NSApp.activate(ignoringOtherApps: true)
             NSApp.windows
                 .first(where: { $0.styleMask.contains(.fullSizeContentView) })?
-                .makeKey()
+                .makeKeyAndOrderFront(nil)
             textFocused = true
         }
     }
 }
 
-/// Mode picker — cycles Auto → Plan → Agent on each click.
-/// Plain button keeps the floating window as key and never disrupts TextField focus.
 private struct ModeSelectorButton: View {
     @Binding var mode: InputMode
     @State private var isHovered = false
@@ -97,7 +101,6 @@ private struct ModeSelectorButton: View {
     }
 }
 
-/// Single toolbar icon that shows a rounded-rect highlight on hover.
 private struct ToolbarIconButton: View {
     let name: String
     var action: () -> Void = {}

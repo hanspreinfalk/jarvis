@@ -7,6 +7,7 @@ struct ChatPanelView: View {
     @Binding var messages: [Message]
     let onClose: () -> Void
     let onSend: () -> Void
+    let onShowAPIKeys: () -> Void
 
     @Environment(\.colorScheme) var colorScheme
     @State private var isPanelHovered = false
@@ -101,7 +102,7 @@ struct ChatPanelView: View {
     // MARK: - Embedded input bar
 
     private var embeddedInputBar: some View {
-        InputBarView(inputText: $inputText, onSend: onSend)
+        InputBarView(inputText: $inputText, onSend: onSend, onShowAPIKeys: onShowAPIKeys)
             .padding(.trailing, 10)
             .padding(.leading, 15)
             .padding(.top, 16)
@@ -172,6 +173,7 @@ private struct AIBubble: View {
             Message(content: "Nice — a borderless floating window with regularMaterial, always on top. I can walk you through the whole thing.", isUser: false),
         ]),
         onClose: {},
-        onSend: {}
+        onSend: {},
+        onShowAPIKeys: {}
     )
 }

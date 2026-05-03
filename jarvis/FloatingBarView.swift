@@ -7,9 +7,10 @@ struct FloatingBarView: View {
     @Binding var inputText: String
     let isOverApp: Bool
     let onSend: () -> Void
+    let onShowAPIKeys: () -> Void
 
     var body: some View {
-        InputBarView(inputText: $inputText, onSend: onSend)
+        InputBarView(inputText: $inputText, onSend: onSend, onShowAPIKeys: onShowAPIKeys)
             .padding(.trailing, 10)
             .padding(.leading, 15)
             .padding(.top, 16)
