@@ -121,7 +121,21 @@ class ClaudeCodeService {
                 return .toolUse(name: name, input: input)
             }
 
+        case "user":
+            // Tool results come back as user-turn messages wrapping tool_result blocks
+            guard let message = json["message"] as? [String: Any],
+                  let content = message["content"] as? [[String: Any]] else { return [] }
+            return content.compactMap { block -> ClaudeEvent? in
+                guard block["type"] as? String == "tool_result" else { return nil }
+                let isError = block["is_error"] as? Bool ?? false
+                let text = (block["content"] as? [[String: Any]])?.first?["text"] as? String
+                    ?? block["content"] as? String
+                    ?? ""
+                return .toolResult(output: text, isError: isError)
+            }
+
         case "tool_result":
+            // Fallback for any direct top-level tool_result events
             let isError = json["is_error"] as? Bool ?? false
             let output = (json["content"] as? [[String: Any]])?.first?["text"] as? String ?? ""
             return [.toolResult(output: output, isError: isError)]

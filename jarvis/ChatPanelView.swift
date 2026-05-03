@@ -27,13 +27,15 @@ struct ChatPanelView: View {
         }
         .frame(width: AppLayout.chatPanelWidth, height: AppLayout.chatPanelHeight)
         .onHover { isPanelHovered = $0 }
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .background(.ultraThickMaterial, in: RoundedRectangle(cornerRadius: 20))
+//        .background(colorScheme == .dark ? Color.black.opacity(0.65) : Color.clear,
+//                    in: RoundedRectangle(cornerRadius: 20))
         .overlay {
             RoundedRectangle(cornerRadius: 20)
                 .fill(Color.white.opacity(0.07))
                 .allowsHitTesting(false)
         }
-        .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Color.primary.opacity(0.18), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Color.primary.opacity(0.1), lineWidth: 1.5))
         .shadow(color: .black.opacity(0.10), radius: 4, x: 0, y: 2)
         .padding(16)
     }
@@ -212,23 +214,38 @@ private struct ToolEventRow: View {
             .buttonStyle(.plain)
 
             if isExpanded {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 8) {
                     if !event.input.isEmpty {
-                        Text(event.input)
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(8)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("INPUT")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(.tertiary)
+                                .tracking(0.8)
+                            Text(event.input)
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                                .textSelection(.enabled)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                     if let output = event.output, !output.isEmpty {
-                        Divider().opacity(0.5)
-                        Text(output)
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundStyle(event.isError ? .red : .secondary)
-                            .lineLimit(8)
+                        Divider().opacity(0.4)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("OUTPUT")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(.tertiary)
+                                .tracking(0.8)
+                            Text(output)
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(event.isError ? .red : .secondary)
+                                .textSelection(.enabled)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                 }
                 .padding(.horizontal, 10)
-                .padding(.bottom, 8)
+                .padding(.top, 4)
+                .padding(.bottom, 10)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
